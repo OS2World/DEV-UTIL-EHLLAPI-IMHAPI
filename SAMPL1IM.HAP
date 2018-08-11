@@ -1,0 +1,90 @@
+*
+*              SAMP1IM.HAP - Sample IMAHPI Command Script
+*
+*       This sample IMHAPI script will transfer a file from a TSO
+* session, after waiting until 11:00 pm.  It will log out of that session,
+* then wait until 8:00 am and log into multiple sessions.
+*       The script also shows several other IMAHPI commands, Echo (-e),
+* AutoWait (-a) and Protparm (-p).  It also demonstrates how to manipulate
+* the terminal windows by enlarging each as the sessions are started.
+*       Obviously, this script is specific for a given site's products
+* and procedures.  The script can be a model for building customized
+* scripts for particular circumstances.
+*       Please see the file IMHAPI.DOC, included with this set of files,
+* for more info on IMHAPI.
+*       Paul Firgens, December 1991
+*
+
+* Turn on the AutoWait option; '-a' could also be used as the command alias.
+-autowait
+* Prompt for and catch a protected parameter which will be used
+* as the password; '-p' could also substitute as the command.
+-protparm
+*
+* Now, turn on the Echo option to watch what happens.
+-echo
+
+* Wait until 11:00 pm to begin the file transfer
+-wait 23:00:00
+CONNECT_PS a
+SENDKEY "tso UFFDA@E"
+* Here the $INP$ symbol will be replaced by the protected parameter, also,
+* IMHAPI will wait until it finds the string 'OIDCARD' before it sends
+* off the SENDKEY command to EHLLAPI.
+SENDKEY $INP$@E * * OIDCARD
+SENDKEY @x * * ***
+DISCONNECT_PS
+RECEIVE_FILE "typical.dat a:'UFFDA.DATA.FILE(typical)' crlf ascii"
+CONNECT_PS a
+SENDKEY logoff@E
+DISCONNECT_PS
+* Turn off the echo for the rest of the script.
+-e
+* Show the status of the sessions and the IMHAPI options.
+-s
+
+* Now, wait until 8:00 am and then login for the userid 'UFFDA'.
+-w 08:00:00
+* Start logon into TSO
+* In each session we'll restore the saved size of the terminal window first
+* then do the login.  We'll also reuse the protected password set earlier.
+* We've also switched from the text form of the commands to the numeric format.
+101 a
+104 a\c1\\s1000\
+102 a
+1 a
+3 "tso UFFDA@E"
+3 $INP$@E * * OIDCARD
+2
+
+* Leave the TSO session, since it usually takes awhile here and hop over to 
+* logon to a system called 'CPUMASTER'.  Later, we'll finish the TSO logon.
+101 b
+104 b\c1\\s1000\
+102 b
+1 b
+3 CPUMASTER@E
+3 UFFDA@T$INP$@E * * Transfer:
+3 @E
+2
+
+* Now, logon to a CICS session
+101 c
+104 c\c1\\s1000\
+102 c
+1 c
+3 cics@E
+3 @C * * INC
+3 "cesn@E"
+3 "UFFDA@T$INP$@E"
+3 menu@E
+2
+
+* Jump back to TSO to complete the Logon.
+1 a
+3 @E * * ***
+3 1@E * * GDDM
+
+* We're finished.
+exit
+

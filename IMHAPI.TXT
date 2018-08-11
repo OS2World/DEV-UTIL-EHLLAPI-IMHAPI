@@ -1,0 +1,827 @@
+
+
+
+
+
+
+
+
+
+
+                                 IMHAPI
+                                 ======
+
+              An EHLLAPI Scripting and Development Utility
+
+
+
+                              Version 1.0
+                              -----------
+
+
+
+                        Reference Documentation
+                        -----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                              Paul Firgens
+                          461 Glenwood Heights
+                  Wisconsin Rapids, WI  54494-6264  USA
+                     CompuServe User ID: 73577,1234
+
+
+
+
+
+
+
+
+
+
+
+        Copyright (c) 1991, Paul Firgens.  All Rights Reserved.
+
+
+
+
+
+                              Please Note!
+                              ============
+
+IMHAPI and accompanying files are offered without charge to the OS/2
+user community.  While no payment is required for the use of the
+programs contained in this document set, if you find them useful, a gift
+of any amount (perhaps proportional to the value IMHAPI provides you or
+your organization) would be appreciated.  That would help defray the
+cost of developing these programs and help provide the means to develop
+additional programs.  Regardless of your financial support, however, I
+would appreciate your comments, questions and reactions to these
+programs.  It would be a pleasure to hear from you.  Please direct your
+comments and, if justified by the usefulness of these programs, your
+financial gift, to the author at the address on the title page.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                             A  DISCLAIMER
+                             =============
+
+          As is usual in these things, you must know that IMHAPI and all
+             programs and documentation included with it are provided on
+              an "AS IS" basis and with no warrantee or guarantee of any
+            kind, expressed or implied. Furthermore, there are no claims
+                     that IMHAPI and accompanying programs are fit for a
+                  particular purpose.  As a user of these materials, you
+               assume complete risk for the use and performance of these
+                 programs and documentation, including any incidental or
+                  consequential damages which may result from their use.
+      Finally, there is no warrantee that these programs are error free,
+               nor is there any assurance that these programs will bring
+                            whiter whites or prevent ugly, waxy buildup.
+
+                                   P.S.  For your information, OS/2 is a
+               trademark of International Business Machines Corporation.
+
+So, with that said, on to IMHAPI!
+
+
+
+
+                              INTRODUCTION
+                              ============
+
+
+IMHAPI, I(nteractively) M(anipulate) (e)H(ll)API, is a program which
+allows a user of IBM's OS/2 Communications Manager to issue EHLLAPI
+commands without the need for other programming.  IMHAPI provides a
+basic scripting framework for interacting with EHLLAPI and OS/2 host
+terminal emulation sessions.
+
+Some of the features of IMHAPI are:
+
+    - Commands can be accepted from any of three different sources:
+    interactively from a windowed or full-screen OS/2 session, from a
+    file or from a named pipe.
+
+    - Protected or hidden data strings (for holding sensitive data
+    such as passwords, etc.) can be included in input commands.
+
+    - Ability to pause an IMHAPI script for a period of time, which is
+    expressible in many different ways: as a specific date and/or time,
+    as a certain number of hours, minutes or seconds, or as a number of
+    milliseconds.
+
+    - Commands can be echoed to the console, to help trace the execution
+    of those commands.
+
+    - Optional File Logging of all commands entered, for later playback
+    or debugging.
+
+    - Optional Automatic waits for mainframe responses.
+
+    - Optional hold of EHLLAPI commands until specified strings are
+    found on a connected host terminal session.
+
+    - Automatic calculation of some EHLLAPI parameter details such as
+    data strings and lengths.
+
+This document outlines the operation of the IMHAPI program.  It doesn't
+attempt to provide a discussion of the EHLLAPI commands and their usage.
+I presume that a user of IMHAPI will understand EHLLAPI or at least have
+access to a manual on EHLLAPI (or HLLAPI, which is a large subset of
+EHLLAPI).  The most current IBM manual on EHLLAPI that I am aware of is
+the "IBM Operating System/2 Extended Edition Version 1.3 EHLLAPI
+Reference Manual".  If there is a need for more information on these
+commands, please let me know.  If there is a large demand, I could
+include an overview of the topic.
+
+IMHAPI requires OS/2 version 1.3 Communications Manager to operate.
+
+
+
+
+                               BACKGROUND
+                               ==========
+
+EHLLAPI is the interface that provides services for manipulating host
+terminal sessions connected to the OS/2 Communications Manager.  EHLLAPI
+is an acronym for Enhanced High Level Language Applications Programming
+Interface and has, in an "un-Enhanced" form, been around a long time in
+the DOS-based host terminal emulation products offered by IBM.
+
+Through EHLLAPI, a program can control various aspects of a terminal
+session.  A program can issue keystrokes against a session, check for
+specific responses, copy strings into a session as well as copy from a
+session and transfer files to or from a mainframe, for example.  It is
+useful for providing a measure of programmatic interaction between a PC
+and a mainframe.  For example, it can be used to automate logon
+procedures or as a means of obtaining mainframe-based data for a PC
+application.
+
+EHLLAPI essentially allows a program to simulate the keystroke
+interactions that a mainframe session would receive if a person were
+controlling that session.  While EHLLAPI does have its limitations, it
+works well for many things.  EHLLAPI works well for straightforward
+tasks such as automating file transfers or user logons, for example.
+IMHAPI was written to help develop these kinds of EHLLAPI sessions and
+make EHLLAPI easier to use and more accessible.
+
+The DOS predecessor for IMHAPI was written to create HLLAPI (the DOS
+counterpart to EHLLAPI) scripts without the overhead of having to write
+programs in a standard language, like C.  When I got hooked on OS/2, I
+took that DOS program, spruced it up considerably and IMHAPI is the
+result.
+
+
+
+
+                         INTRODUCTION TO IMHAPI
+                         ======================
+
+The basic concept behind IMHAPI is to issue EHLLAPI commands to manage
+host terminal sessions, but that alone is insufficient to accomplish
+much beyond demonstrating how EHLLAPI works, since there are other
+considerations which must be addressed to have something useful.  These
+considerations run from dealing with the particular format of the
+various EHLLAPI commands to allowing for mainframe response times, etc.
+IMHAPI attempts to address many of these concerns through its options
+and extensions.
+
+IMHAPI will accept commands from any of three different sources.  If
+started with no command line parameters, IMHAPI will begin an
+interactive session, prompting for commands from the user.  If started
+with an argument in the format of a named pipe  (i.e.:
+'\pipe\<pipename>'), IMHAPI will attempt to connect to that pipe,
+accepting commands from and sending its results out through that pipe.
+If IMHAPI is started with anything else on the command line, it will
+assume the argument is a file name and will try to open the file and
+then read and process commands from that file.
+
+The IMHAPI command format is line-oriented; IMHAPI expects one command
+per line.  It doesn't provide for continuing commands across lines or
+for stacking multiple commands on a single line.  The maximum length of
+a single command is 255 characters, however.  IMHAPI also expects a
+command to begin in the first column of the input line and will ignore
+any command which doesn't begin there. Comment lines in IMHAPI scripts
+are begun with an asterisk ('*').
+
+IMHAPI commands themselves are of two different types.  There are
+commands that are directed toward EHLLAPI and commands intended for
+IMHAPI itself.
+
+In and of itself, IMHAPI can accomplish quite a lot.  It can help create
+and execute straightforward EHLLAPI interactions, including login and
+file transfer sessions.  However, IMHAPI is not a "complete" scripting
+language in the sense of including many of the features usually expected
+in a language (variable declarations, control flow structures, etc.).  I
+didn't want to add to the language clutter of the world.  I thought that
+most users of IMHAPI were looking for a means of simplifying their
+dealings with EHLLAPI and would otherwise probably prefer to work with
+the languages they knew best.
+ 
+Because of this, IMHAPI concentrates on those features that seemed most
+relevant to EHLLAPI issues; if the controls provided by a programming
+environment are needed, IMHAPI can be integrated through a named pipe
+connected to the best tool for the non-EHLLAPI end of the task.  With a
+named pipe connection between a user-written program and IMHAPI, a great
+deal of the work of directing EHLLAPI can be handled by IMHAPI, while
+the other control requirements can be handled with the appropriate
+language.  Named pipe connections are discussed in more detail below.
+
+
+
+
+                        EHLLAPI-Related Commands
+                        ========================
+
+The IMHAPI commands intended for EHLLAPI closely follow the form
+expected by EHLLAPI itself, with one IMHAPI extension.  Each of the
+EHLLAPI-bound commands can have five parameters: FUNCTION_CODE,
+DATA_STRING, DATA_STRING_LENGTH, PRESENTATION_SPACE_PARAMETER and, the
+IMHAPI extension, WAIT_STRING.
+
+
+    FUNCTION_CODE Parameter
+    -----------------------
+    is the EHLLAPI function code number or the name of the function
+    code.  The function code invokes the requested EHLLAPI service.  For
+    example, to send keystrokes to a terminal session, the IMHAPI
+    command would use FUNCTION_CODE 3.  Alias names are also accepted
+    for the numeric codes.  These names follow the convention used in
+    the HAPI_C.H header file installed as part of Communications
+    Manager.  (Usually, this file is placed in the C:\CMLIB
+    subdirectory.)  The names accepted by IMHAPI are the same as those
+    in that file, with the "HA_" suffix removed.  The chart below shows
+    the correspondence between the EHLLAPI function codes and the names.
+
+          CONNECT_PS..............1  STOP_HOST_NOTIFY.......25
+          DISCONNECT_PS...........2  SEARCH_FIELD...........30
+          SENDKEY.................3  FIND_FIELD_POS.........31
+          WAIT....................4  FIND_FIELD_LEN.........32
+          COPY_PS.................5  COPY_STR_TO_FIELD......33
+          SEARCH_PS...............6  COPY_FIELD_TO_STR......34
+          QUERY_CURSOR_LOC........7  SET_CURSOR.............40
+          COPY_PS_TO_STR..........8  START_CLOSE_INTERCEPT..41
+          SET_SESSION_PARMS.......9  QUERY_CLOSE_INTERCEPT..42
+          QUERY_SESSIONS.........10  STOP_CLOSE_INTERCEPT...43
+          RESERVE................11  START_KEY_INTERCEPT....50
+          RELEASE................12  GET_KEY................51
+          COPY_OIA...............13  POST_INTERCEPT_STATUS..52
+          QUERY_FIELD_ATTR.......14  STOP_KEY_INTERCEPT.....53
+          COPY_STR_TO_PS.........15  SEND_FILE..............90
+          STORAGE_MGR............17  RECEIVE_FILE...........91
+          PAUSE..................18  CONVERT_POS_ROW_COL....99
+          QUERY_SYSTEM...........20  CONNECT_PM_SRVCS......101
+          RESET_SYSTEM...........21  DISCONNECT_PM_SRVCS...102
+          QUERY_SESSION_STATUS...22  QUERY_WINDOW_COORDS...103
+          START_HOST_NOTIFY......23  PM_WINDOW_STATUS......104
+          QUERY_HOST_UPDATE......24  CHANGE_SWITCH_NAME....105
+                       CHANGE_WINDOW_NAME....106
+
+    IMHAPI will accept the numeral 3 and SENDKEY interchangeably as a
+    valid FUNCTION_CODE, for example.  These alias names can be entered
+    in IMHAPI commands in upper, lower or mixed case.
+
+    FUNCTION_CODE is the only parameter of the five EHLLAPI-bound
+    commands that is required.  The others may or may not be required
+    depending on the FUNCTION_CODE itself.  If there are an insufficient
+    number of parameters supplied for a command, IMHAPI will complain
+    and issue an error message.
+
+
+    DATA_STRING Parameter
+    ---------------------
+    is used to pass data to EHLLAPI as required by the specific
+    FUNCTION_CODE used.  What EHLLAPI requires in this parameter and
+    even if this parameter needed is dependent on the FUNCTION_CODE
+    preceding it.  The format of the data itself must follow whatever
+    EHLLAPI conventions are set for the function code used, except for
+    the IMHAPI extensions discussed below.
+
+        EXAMPLE:  For the SENDKEY function (code 3), the DATA_STRING
+        parameter holds the characters which are to be sent to the
+        connected host terminal session.  Specifically, the IMHAPI
+        command "3 TSO@E" would invoke the EHLLAPI SENDKEY function and
+        pass it the DATA_STRING parameter 'TSO@E' to simulate a user
+        typing the letters 'T' 'S' 'O' followed by a poke of the 'ENTER'
+        key (the '@E' symbol).
+
+    Usually, IMHAPI uses spaces for delimiting its command parameters.
+    When spaces must be imbedded in the DATA_STRING parameter, the start
+    and end of the entire parameter can be marked with double quotes to
+    have IMHAPI pass the entire string, blanks and all, to EHLLAPI.
+
+        EXAMPLE:  To extend the example above, if the user wished to
+        include her user-id on the command line along with the request
+        for TSO, she might use '3 "TSO userid@E" ' to send the entire
+        string 'TSO userid' (and the "hit" of the ENTER key) to EHLLAPI.
+
+    The double quote delimiter can be changed so that it too could be
+    included as a character in a data string.  How that is accomplished
+    is discussed below under the "-D" IMHAPI command.
+
+    ** SPECIAL DATA STRINGS **
+
+    There are a couple of specific types of strings which get special
+    treatment by IMHAPI.  The first the is symbol $INP$ (in capital
+    letters).  It is a "placeholder" to mark where a previously
+    established protected string is to be inserted.  The "-P" option
+    (see below) prompts the user to type in a string which will be
+    hidden and not displayed in the OS/2 session.  Then, when placed in
+    a DATA_STRING parameter, the $INP$ symbol causes IMHAPI to replace
+    the $INP$ symbol with the protected string at that point in the
+    parameter.  IMHAPI will adjust the length of the DATA_STRING
+    parameter to accommodate the protected parameter.  Only one hidden
+    parameter is available at any given time, although it can be used as
+    often as needed (it isn't discarded after it's used) and it also can
+    be reset (with "-P") as often as needed.  If $INP$ is used before a
+    parameter is assigned, no string will be inserted into the
+    EHLLAPI-bound data string.
+
+        EXAMPLE:  Assume the -P option was used, the protected
+        parameter was set to 'MyPazWrd' and IMHAPI was given the
+        DATA_STRING '3 Userid $INP$@E'.  IMHAPI would replace '$INP$'
+        with 'MyPazWrd' and send '3 Userid  MyPazWrd@E' off to EHLLAPI.
+
+    The second set of special strings allows a user to enter binary
+    values into the DATA_STREAM.  The EHLLAPI functions which control
+    the terminal windows (function numbers 101-106) often require binary
+    parameters.  To include these in a DATA_STRING, IMHAPI provides a
+    means to enter these binary parameters as hexadecimal numerals.  The
+    hexadecimal value is included in the DATA_STRING and preceded by a
+    flag to indicate the type of binary number to which it is to be
+    converted and ended with a '\'.  These qualifiers delimit a string
+    of hexadecimal digits as a particular type of binary number: '\c'
+    indicates a CHAR sized number, '\s' is a SHORT integer and '\l' is a
+    LONG integer.  IMHAPI creates signed binary values of the requested
+    length for these strings; '\c2\' would be converted to x'02',
+    '\s1000\' to x'1000' and \l1000\ to x'00001000'.  IMHAPI converts
+    all the hexadecimal digits it finds following these escape
+    sequences, up to the backslash character, '\'.
+
+        EXAMPLE: To maximize the size of a terminal window, function
+        code 104 (PM_WINDOW_STATUS) is used.  EHLLAPI expects the data
+        string to include the short window name, a CHAR sized option
+        and, at least, a SHORT sized option.  IMHAPI would expect to see
+        a command like the following: '104 a\c1\\s800\' which would create
+        a data string for EHLLAPI containing 'a' as the short session
+        name followed by a x'01' and a x'0800'.  Please see Appendix B
+        for a list of these values and the actions they invoke.
+
+
+    DATA_STRING_LENGTH Parameter
+    ----------------------------
+    is often required by EHLLAPI.  IMHAPI will automatically calculate
+    this length, if not included as part of the command.  If it is
+    needed, length can also be explicitly entered.
+
+        EXAMPLE:  The IMHAPI EHLLAPI command "3 LongString 4" would have
+        IMHAPI to send the four characters 'Long' to the connected
+        EHLLAPI session.  If the length value was left off or a '*' was
+        substituted for it, IMHAPI would pass EHLLAPI the length of the
+        full string, and EHLLAPI would, in turn, send the entire string
+        'LongString' to the terminal session.
+        
+    Some EHLLAPI commands require a "Presentation Space Parameter" (the
+    fourth parameter in the IMHAPI input string). In these cases, IMHAPI
+    will automatically calculate the data string length if an asterisk
+    ('*') is entered as the length parameter (and also pass along the
+    explicit PSP parameter).  So, in the case of a command such as
+    COPY_PS_TO_STRING (FUNCTION_CODE 8) leaving the length value to
+    default will have EHLLAPI pass back only the length of the
+    DATA_STRING itself.
+
+        EXAMPLE: If IMHAPI is passed the command "8 * * 500", EHLLAPI
+        will pass back only the one character found at position 500.
+        More characters can be returned if EHLLAPI is given a longer
+        length.  If the command to IMHAPI is "8 * 4096 1", IMHAPI will
+        tell EHLLAPI to pass back the 4096 characters in the
+        presentation space beginning at screen position 1.
+
+   PLEASE NOTE:  The maximum data string length IMHAPI can handle is
+   4096 bytes!
+
+
+    PRESENTATION_SPACE_PARAMETER
+    ----------------------------
+    is occasionally used for passing a parameter to EHLLAPI.  (EHLLAPI
+    usually uses this area for returning error codes.)  If required, it
+    can be included in the IMHAPI command.  An asterisk can be used as a
+    "place holder" if no PRESENTATION_SPACE_PARAMETER is explicitly
+    required for EHLLAPI but needed to provide IMHAPI a fifth parameter.
+    The PRESENTATION_SPACE_PARAMETER defaults to zero, if no numeric
+    parameter is included in an IMHAPI command.
+
+
+    WAIT_STRING Parameter
+    ---------------------
+    is a data string which IMHAPI will wait to find in the currently
+    connected presentation space PRIOR to sending the preceding four
+    parameters off to EHLLAPI.  If this parameter is included in a
+    command, the parameters preceding it will be sent on to EHLLAPI ONLY
+    after IMHAPI locates this WAIT_STRING parameter in the currently
+    connected terminal window.  The WAIT_STRING parameter is delimited
+    by the same character as the DATA_STRING parameter (as discussed
+    above and changed with the -D option) but it does not support the
+    Special Data Strings documented in the DATA_STRING section.  The
+    WAIT_STRING parameter useful in situations where the only reliable
+    means of judging that a script can continue is by the appearance of
+    a particular phrase in the connected window.
+
+    CICS, for example, is notorious for unlocking the display and
+    keyboard after a transaction is begun, even though no response has
+    been supplied.  The WAIT_STRING feature helps address these kinds of
+    situations, without the need for programmed loops or long pauses. If
+    needed, the wait invoked with this parameter can be ended by poking
+    the ESC key; IMHAPI then sends off the command preceding the
+    WAIT_STRING.  IMHAPI will not wait and search for a default string
+    if this parameter is not included.
+
+        EXAMPLE:   The IMHAPI command "3 userid@E * * OIDCARD" would
+        pause and wait UNTIL the string "OIDCARD" appeared in the
+        terminal window BEFORE proceeding to send the SENDKEY command
+        (function code 3) and DATA_STRING off to EHLLAPI.
+
+ 
+
+
+                            IMHAPI Commands
+                            ===============
+
+There are several commands which control the operation of IHMAPI itself.
+All of these options can be entered from any of the input sources
+(keyboard, file or pipe) although several of them are disabled when they
+fed to IMHAPI from a file or a pipe.  The commands can be entered in
+either upper or lower case and can be intermixed among EHLLAPI-bound
+commands.
+
+  COMMANDS
+  --------
+
+
+    -A    Toggle AutoWait on or off.  When on, the AutoWait option
+          automatically issues a EHLLAPI "WAIT" command after it
+          completes a command.  The EHLLAPI "WAIT" command tells EHLLAPI
+          not to return control until the keyboard is unlocked and the
+          "clock" or "X" in the lower left-hand corner of the terminal
+          screen has disappeared.
+
+
+    -B    Blank (clear) the IMHAPI screen.  This option is disabled for
+          non-interactive sessions (where the command source is a named
+          pipe or a file).
+
+
+    -C    List the EHLLAPI text commands and equivalent function codes.
+          This will display a table of the EHLLAPI function codes and
+          the corresponding alias names.  It is disabled for use with
+          named pipes.
+
+
+    -Dx   Change the data delimiter to the character immediately
+          following the '-D' (here, the 'x').  The default delimiter is a
+          double quote '"' (as mentioned above) but can be changed with
+          this command.  There is no space between the option code
+          and the new delimiter character.  Entry of a "-D" without any
+          following character (including a space), will display the
+          current delimiter.
+
+
+    -E    Toggle Command Echo on or off.  When on, this option will have
+          IMHAPI echo each of the input commands and comment lines
+          (those which begin with an asterisk) to the terminal display.
+          This is useful for debugging scripts as it will trace the
+          actions EHLLAPI performs in response to each IMHAPI command.
+          This option is unavailable for input from named pipes.
+
+
+    -L <filename>   Log IMHAPI commands to a file called <filename>.  If
+          no name is supplied, the default name is IMHAPI.HAP.  When on,
+          IMHAPI will record all the valid commands (those that make it
+          past IMHAPI's editing) and comment lines (those with an
+          asterisk in column 1) into the Log file.  This can allow a
+          user to build IMHAPI scripts for later execution or further
+          editing.  The Log file is automatically closed when a user
+          exits from IMHAPI.  It can also be closed by issuing the "-L"
+          option when logging is already on.  If a new file name is
+          included, the previous file will be closed and a new one
+          opened.  If no new name is included, the current file is
+          closed and no new one opened. IMHAPI expects a space between
+          the option code (the "-L") and the name of the log file.
+
+          A user can run IMHAPI interactively, turn the Log option on,
+          issue appropriate EHLLAPI commands to manipulate a terminal
+          session and watch the terminal window for responses and
+          required entries while recording the appropriate commands in a
+          file.  This can save time over manually recording keystroke
+          sequences and help reduce mistakes.  Since insuring that every
+          particular keystroke or option needed to perform a particular
+          action is accounted for in an EHLLAPI program can be a tedious
+          process, interactive IMHAPI logging commands to a file, can
+          help relieve some of that tedium.
+
+
+    -P    Prompt for a protected (invisible) parameter.  As discussed
+          previously, IMHAPI allows for a symbol for a hidden parameter,
+          $INP$.  This option supplies the value for that symbol.  When
+          this option is issued, IMHAPI will pause and issue a message
+          to the user asking for a input string.  IMHAPI will record the
+          user's keystrokes until she or he hits the "Enter" key.  The
+          area he or she types into will not display the string on the
+          screen.  IMHAPI allows up to 255 characters in this protected
+          parameter string.
+
+
+    -S    Show current IMHAPI options status including available
+          terminal sessions.  This option displays the settings for the
+          data string delimiter and the log file.  It shows if command
+          Echo and AutoWait are on or off.  It also shows the status of
+          the connected terminal sessions: their short and long names
+          plus the sizes of their respective presentation spaces.
+
+
+    -V    Display the IMHAPI version release level.
+
+
+    -W "time value"   Have IMHAPI wait until the indicated time value
+          before continuing to execute commands.  This option is
+          supported for command input from any source.  The "time" value
+          can be in any of the following formats:
+
+          FORMAT
+          ------
+
+          HH:MM:SS   A specific time entered as Hours (HH) Minutes (MM)
+                     and Seconds (SS) values, separated by colons and
+                     based on a 24-hour clock (i.e.: 14:00 is 2:00 PM).
+                     IMHAPI will wait until the next occurrence of the
+                     indicated time before resuming execution.  The
+                     seconds value is optional and each value must
+                     include a leading zero, if it would otherwise be a
+                     single digit (05:02 is OK but 5:2 is not).  Example:
+                     "-w 21:05:30" would cause a wait until the next
+                     9:05:30 PM.
+
+          xxHxxMxxS  An elapsed time value where 'xx' is the number of
+                     hours, minutes or seconds (the 'H', 'M', and 'S'
+                     respectively of the format) that are to pass before
+                     IMHAPI will resume execution.  Each value must be 2
+                     digits long, so that a zero must precede a single
+                     digit number.  The seconds value is optional.
+                     Example: "-w 21h05m30s" would have IMHAPI wait for
+                     21 hours, 5 minutes and 30 seconds before
+                     continuing.
+
+          MM/DD/YYYY <HH:MM:SS>  A specific date and, optional, time for
+                     IMHAPI to resume execution.  The date value
+                     includes the month, day and year (the 'MM', 'DD',
+                     'YYYY' places respectively of the format) when
+                     IMHAPI will continue, separated by backslashes.
+                     Again, the month and day values must be preceded by
+                     a zero if they would otherwise be only a single
+                     digit.  The year value must be in the four digit
+                     format (ie: 1991).  IMHAPI will check for a valid
+                     date, including leap years, and will continue
+                     immediately if that date has passed.  The time
+                     value follows the guidelines previously mentioned.
+                     Example: "-w 02/29/1996 07:28:45" would have IMHAPI
+                     wait until Feb. 29, 1996 at 7:28:45 AM before
+                     continuing.
+
+           mmmmmmmm  A number of milliseconds ('m') that IMHAPI is to
+                     wait before resuming execution.  The maximum wait
+                     value for this format is the maximum value for an
+                     unsigned long integer: 4,294,967,295 (about 49.7
+                     days).  This parameter does not require leading
+                     zeros.  Example: "-w 300" would have IMHAPI wait
+                     300 milliseconds before continuing.
+
+
+    ?     Displays on-line help information.  Not supported for named
+          pipe connections.
+
+
+    EXIT  Quit the IMHAPI program.
+
+
+
+Named Pipe Support
+------------------
+
+IMHAPI supports a connection to a named pipe, but expects the connection
+to be in duplex mode (supporting both reads and writes).  The collection
+of files included with this document include two sample programs that
+demonstrate the use of IMHAPI with named pipes.  These programs are
+SAMPLIPE and REXXHAPI.  SAMPLIPE creates a named pipe and starts IMHAPI
+running in the background.  IMHAPI commands can be sent to IMHAPI from a
+command-line prompt and the results are displayed on the screen.  This
+is useful for demonstrating how IMHAPI works with named pipes and
+showing the results IMHAPI returns through a pipe.
+
+As an example of integrating IMHAPI into a programming environment
+(REXX), I've included REXXHAPI which is a DLL which containing two REXX
+external functions, MkHaPipe and ToHapi.  MkHaPipe creates a named pipe,
+starts IMHAPI as a background task and passes back to REXX the handle
+number of the pipe it created.  ToHapi uses that pipe handle to connect
+with IMHAPI, passing along an IMHAPI command string.  ToHapi passes back
+to the REXX program the results it gets from IMHAPI via the pipe.  With
+these DLL functions, IMHAPI can be immediately used with REXX.  The
+source code for these programs is included in this document set and
+contains more information on how these programs can be used.  A sample
+REXX program using these functions is also included.
+
+IMHAPI is sensitive to the source of its commands and modifies its
+behavior slightly depending on assumptions about who or what will be
+receiving the returned data.  It expects that a named pipe would be
+connected to another program, an interactive session to a user at a
+terminal and a file may likely not be attended at all.   Because of
+this, it doesn't expect that a program connected to IMHAPI through a
+named pipe would want access to options which invoke help screens or
+clear the display, for example.  Appendix A discusses IMHAPI messages
+and named pipes in more detail.
+
+
+In Conclusion
+-------------
+
+That's IMHAPI.  Thanks for taking a look at IMHAPI and I hope it might
+be of some use to you.  Please do pass your comments, questions,
+problems, etc. on to me (the author) at the address below.   Thanks and
+may u b HAPI too!
+
+                     Paul Firgens
+                     461 Glenwood Heights
+                     Wisconsin Rapids, WI  54494-6264  USA
+                     CompuServe User ID: 73577,1234
+
+
+
+
+
+
+
+
+                            
+                      Appendix A: IMHAPI Messages
+                      ===========================
+
+As mentioned above, IMHAPI is aware of the source of its commands and
+makes an attempt to adjust the style of the output to the "audience".
+IMHAPI is less wordy when its command source is a named pipe, since the
+assumption is that IMHAPI is connected to a process.  When the command
+source is a file, nothing is written back into the source of the
+commands (that could clobber the file that contains the IMHAPI
+commands), but the results of the commands are echoed back to the
+screen.  These could, of course be re-directed into a file for later
+review.  When run interactively, IMHAPI assumes a human user is
+controlling the process and tailors its output accordingly by providing
+some on-line help, some messages in complete sentences and a couple of
+additional options.  IMHAPI does provide the same message content to all
+of the environments to which it directs its output.
+
+Almost all of the IMHAPI-related option messages returned to a named
+pipe connection (from options such as -w, -e, etc.) all follow a similar
+format.  There is an unique eight character message code followed by a
+brief explanatory sentence.  These codes are listed in the chart below:
+
+AUTOWOFF: AutoWait is now OFF.
+AUTOWSON: AutoWait is now ON.
+AWAITERR: Autowait ERROR, Application Not Connected to a Valid Session
+AWAITERR: Autowait ERROR, Wait Timeout While in XCLOCK or XSYSTEM
+AWAITERR: Autowait ERROR, Keyboard is locked
+AWAITERR: Autowait ERROR, A System Error Occurred
+AWAITERR: Autowait ERROR, An Unknown Error Occurred
+CMDNTAVL: Command <input command> not supported for piped output.
+ECHOCOMD: Input Command: <input command>
+ECHOISON: Echo is now ON.
+ECHOSOFF: Echo is now OFF.
+INSFPARM: Insufficient number of parameters included in command.
+INVALCMD: Unknown Command - <input command>
+INVDELIM: No valid delimiter character supplied.  Delimiter remains: <char>
+INVLDATE: Invalid date parameter.
+INVLGOPN: Can't open <file name>
+INVLTIME: Invalid time parameter.
+INVLWAIT: The wait value is invalid: <input time value>
+LOGFLCLO: Log file now closed.
+NOECHOAV: Command -e not supported for piped output.
+NOWAITPA: No wait parameter supplied.
+OPNERROR: Can't open <file name>.  OS/2 error code: <OS/2 Error Code>
+OPTNSERR: -S option returned a non-zero Query_Sessions rc: <EHLLAPI Error Code>
+READFAIL: Read failure on input file.  OS/2 error code: <OS/2 Error Code>.
+UNAVLOPT: Unused option code: <input option code>
+VALDELIM: Data string delimiter now set to: '<char>' (Hex value: <hex value>)
+VALOGOPN: Commands being logged to file <log file name>
+
+The angle brackets ('<' and '>') indicate where a particular value or other
+parameter is included in the message.
+
+For named pipe connections, there are three exceptions to this format.
+One is on the -WAIT option.  In this case, IMHAPI returns the time and
+date (at the beginning of the return message) when it resumes, as in the
+example below:
+
+                 HH:MM:SS.hhh MM/DD/YYYY IMHAPI Resumes
+
+The second named pipe exception is for the -STATUS option.  In this
+case, IMHAPI returns the same message text an interactive user would
+receive.  IMHAPI reports the settings for the various options and the
+status of the connected host sessions.  Finally, IMHAPI returns the
+message "OK" for comment lines piped to it.
+
+Most of the messages reported for other command sources follow this same
+format.  A couple of them tend to be less terse or formal; however, the
+information content is no different from the other formats.
+
+Finally, for information returned from EHLLAPI-bound commands, IMHAPI
+returns EHLLAPI's response in the following order:
+
+        1. PRESENTATION_SPACE_PARAMETER (which is where EHLLAPI
+           puts its return code).
+        2. DATA_STRING_LENGTH parameter.
+        3  DATA_STRING returned from EHLLAPI.
+
+When run interactively or with file input, IMHAPI only displays those
+parameters that have been set or changed by EHLLAPI.  IMHAPI returns ALL
+parameters when connected to a named pipe, including those that were not
+modified by EHLLAPI.  The first two parameters are always returned as
+printable ASCII characters (not binary values) and, when delivered into
+a named pipe, are separated from one another by a single space.
+
+
+
+                 Appendix B: EHLLAPI Binary Parameters
+                 =====================================
+
+Some of the terminal window manipulation functions of EHLLAPI require
+binary parameters.  IMHAPI can create these binary parameters for
+EHLLAPI from the hexadecimal numerals entered in the
+DATA_STRING_PARAMETER.  Function 104 (PM_WINDOW_STATUS) uses these
+parameters extensively, for example.  The function uses a SET or
+QUERY option to control its action;  the hexadecimal value for the SET
+option is '\c1\' and the value for the QUERY option is '\c2'.  The
+respective hexadecimal parameters and values for function 104 window
+flags are:
+
+              Window Flag         Equivalent IMHAPI values
+              -----------         -----------------------
+               SWP_SIZE                   \s0001\
+               SWP_MOVE                   \s0002\
+               SWP_ZORDER                 \s0004\
+               SWP_SHOW                   \s0008\
+               SWP_HIDE                   \s0010\
+               SWP_NOREDRAW               \s0020\
+               SWP_NOADJUST               \s0040\
+               SWP_ACTIVATE               \s0080\
+               SWP_DEACTIVATE             \s0100\
+               SWP_MINIMIZE               \s0400\
+               SWP_MAXIMIZE               \s0800\
+               SWP_RESTORE                \s1000\
+               SWP_DEACTIVATE             \s0080\
+
+Some of these options can be ORed together to create multiple actions.
+For example, combining RESTORE ('\s1000\') with ACTIVATE ('\s0080\') for
+the value '\s1080\' will make the connected terminal window the front
+and active window.
+
+The positioning and sizing parameters for function 104 will only be
+recognized if the corresponding window flag is selected.  To set a
+window's size, SWP_SIZE ('\s0001\') must be selected and to move a
+window, SWP_MOVE ('\s0002\') must be used.
+
+The relative window placement values are HWND_TOP ('\l0003\') and
+HWND_BOTTOM ('\l0004\').  These are only accepted if SWP_ZORDER
+('\s0004\') is set in the window flag parameter.
+
+Finally, the leading zeros on all of these hex values are optional:
+IMHAPI considers '\s4\' the same as '\s0004\'.
+
+
